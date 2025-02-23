@@ -2,6 +2,8 @@ import streamlit as st
 import preprocessor,helper
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
+import re
 
 st.sidebar.title("Chat Analyzer")
 
@@ -13,7 +15,10 @@ if uploaded_file is not None:
 
     # fetch unique users
     user_list = df['user'].unique().tolist()
-    user_list.remove('group_notification')
+
+    if 'group_notification' in user_list:
+        user_list.remove('group_notification')
+    
     user_list.sort()
     user_list.insert(0,"Overall")
 
@@ -124,7 +129,7 @@ if uploaded_file is not None:
             st.dataframe(emoji_df)
         with col2:
             fig,ax = plt.subplots()
-            ax.pie(emoji_df[1].head(),labels=emoji_df[0].head(),autopct="%0.2f")
+            ax.pie(emoji_df["count"].head(),labels=emoji_df["count"].head(),autopct="%0.2f")
             st.pyplot(fig)
 
 
