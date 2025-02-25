@@ -1,10 +1,8 @@
 import streamlit as st
-import preprocessor,helper
-from network_analysis import build_interaction_network, visualize_network, analyze_network
+import preprocessor, helper
+import sentiment_analysis, network_analysis
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pandas as pd
-import re
 
 st.sidebar.title("Chat Analyzer")
 
@@ -13,47 +11,27 @@ if uploaded_file is not None:
     bytes_data = uploaded_file.getvalue()
     data = bytes_data.decode("utf-8")
     df = preprocessor.preprocess(data)
-
-    # Network analysis
-    st.sidebar.write("## Network Analysis")
-    if st.sidebar.button("Generate Interaction Network"):
-        G = build_interaction_network(df)
-        st.title("Network Analysis")
-        visualize_network(G, st)
-        analyze_network(G, st)
+   
+   # Prepare userlist for selection and let user select user
+    user_list = ["Overall"] + sorted(set(df['user']) - {'group_notification'})  
+    selected_user = st.sidebar.selectbox("Select user", user_list)
 
     # Chat Analysis
     st.sidebar.write("## Chat Analysis")
-    # fetch unique users
-    user_list = df['user'].unique().tolist()
-
-    if 'group_notification' in user_list:
-        user_list.remove('group_notification')
-    
-    user_list.sort()
-    user_list.insert(0,"Overall")
-
-    selected_user = st.sidebar.selectbox("Select user",user_list)
-
     if st.sidebar.button("Show Analysis"):
+        # Fetch Stats
+        num_messages, words, num_media_messages, num_links = helper.fetch_stats(selected_user, df)
 
-        # Stats Area
-        num_messages, words, num_media_messages, num_links = helper.fetch_stats(selected_user,df)
+        # Display Stats
         st.title("Top Statistics")
-        col1, col2, col3, col4 = st.columns(4)
+        cols = st.columns(4)  
+        stats = ["Total Messages", "Total Words", "Media Shared", "Links Shared"]  
+        values = [num_messages, words, num_media_messages, num_links]  
 
-        with col1:
-            st.header("Total Messages")
-            st.title(num_messages)
-        with col2:
-            st.header("Total Words")
-            st.title(words)
-        with col3:
-            st.header("Media Shared")
-            st.title(num_media_messages)
-        with col4:
-            st.header("Links Shared")
-            st.title(num_links)
+        for col, stat, value in zip(cols, stats, values):  
+            with col:  
+                st.header(stat)  
+                st.title(value)  
 
         # monthly timeline
         st.title("Monthly Timeline")
@@ -121,21 +99,16 @@ if uploaded_file is not None:
 
         # most common words
         most_common_df = helper.most_common_words(selected_user,df)
-
         fig,ax = plt.subplots()
-
         ax.barh(most_common_df[0],most_common_df[1])
         plt.xticks(rotation='vertical')
-
         st.title('Most commmon words')
         st.pyplot(fig)
 
         # emoji analysis
         emoji_df = helper.emoji_helper(selected_user,df)
         st.title("Emoji Analysis")
-
         col1,col2 = st.columns(2)
-
         with col1:
             st.dataframe(emoji_df)
         with col2:
@@ -144,7 +117,31 @@ if uploaded_file is not None:
             st.pyplot(fig)
 
 
+    # Sentiment Analysis
+    st.sidebar.write("## Sentiment Analysis")
+    if st.sidebar.button("Analyze Sentiment"):
+        if selected_user != 'Overall':
+            df = df[df['user'] == selected_user]
 
+        df = sentiment_analysis.apply_sentiment_analysis(df)
+        st.title("Sentiment Analysis")
+        st.write(df[["date", "user", "message", "sentiment"]])  # Display results
+
+        st.subheader("📊 Sentiment Distribution")
+        sentiment_analysis.visualize_sentiment_distribution(df)
+
+        st.subheader("📈 Sentiment Trend Over Time")
+        sentiment_analysis.sentiment_over_time(df, st)
+
+    # Network Analysis is done when Overall is selected
+    if selected_user == 'Overall':
+        # Network Analysis
+        st.sidebar.write("## Network Analysis")
+        if st.sidebar.button("Generate Interaction Network"):
+            G = network_analysis.build_interaction_network(df)
+            st.title("Network Analysis")
+            network_analysis.visualize_network(G, st)
+            network_analysis.analyze_network(G, st)
 
 
 
