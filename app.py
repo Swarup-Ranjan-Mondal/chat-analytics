@@ -1,5 +1,6 @@
 import streamlit as st
 import preprocessor,helper
+from network_analysis import build_interaction_network, visualize_network, analyze_network
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -13,6 +14,16 @@ if uploaded_file is not None:
     data = bytes_data.decode("utf-8")
     df = preprocessor.preprocess(data)
 
+    # Network analysis
+    st.sidebar.write("## Network Analysis")
+    if st.sidebar.button("Generate Interaction Network"):
+        G = build_interaction_network(df)
+        st.title("Network Analysis")
+        visualize_network(G, st)
+        analyze_network(G, st)
+
+    # Chat Analysis
+    st.sidebar.write("## Chat Analysis")
     # fetch unique users
     user_list = df['user'].unique().tolist()
 
@@ -22,7 +33,7 @@ if uploaded_file is not None:
     user_list.sort()
     user_list.insert(0,"Overall")
 
-    selected_user = st.sidebar.selectbox("Show analysis wrt",user_list)
+    selected_user = st.sidebar.selectbox("Select user",user_list)
 
     if st.sidebar.button("Show Analysis"):
 
@@ -131,6 +142,7 @@ if uploaded_file is not None:
             fig,ax = plt.subplots()
             ax.pie(emoji_df["count"].head(),labels=emoji_df["count"].head(),autopct="%0.2f")
             st.pyplot(fig)
+
 
 
 
